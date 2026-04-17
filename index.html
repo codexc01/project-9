@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Uzbekistan AI Excellence Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body { background: #020617; color: white; overflow-x: hidden; }
+    .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(148, 163, 184, 0.1); }
+    .glass-strong { background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px); border: 1px solid rgba(148, 163, 184, 0.15); }
+    .gradient-text { background: linear-gradient(90deg, #3b82f6 0%, #a855f7 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .gradient-border { position: relative; }
+    .gradient-border::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(90deg, #3b82f6, #a855f7); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: xor; -webkit-mask-composite: xor; pointer-events: none; }
+    .neon-glow { box-shadow: 0 0 20px rgba(59,130,246,0.3), 0 0 40px rgba(168,85,247,0.2); }
+    .mesh-1 { background: radial-gradient(600px circle at 10% 20%, rgba(59,130,246,0.15), transparent 40%), radial-gradient(800px circle at 90% 80%, rgba(168,85,247,0.15), transparent 40%); }
+    .animate-float { animation: float 6s ease-in-out infinite; }
+    @keyframes float { 0%,100% { transform: translateY(0px);} 50% { transform: translateY(-12px);} }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.3); border-radius: 2px; }
+    .view { transition: opacity 0.3s ease; }
+
+    /* LANDING PAGE LIGHT THEME OVERRIDES */
+    #view-landing {
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      color: #0f172a;
+    }
+    #view-landing .glass,
+    #view-landing .glass-strong {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.05);
+    }
+    #view-landing .glass-strong {
+      background: rgba(255, 255, 255, 0.95);
+    }
+    #view-landing .gradient-border::before {
+      background: linear-gradient(90deg, #3b82f6, #a855f7);
+    }
+    #view-landing .text-slate-300,
+    #view-landing .text-slate-400,
+    #view-landing .text-slate-500 {
+      color: #334155 !important;
+    }
+    #view-landing .text-slate-200,
+    #view-landing .text-white {
+      color: #0f172a !important;
+    }
+    #view-landing .border-white\/10,
+    #view-landing .border-white\/5 {
+      border-color: rgba(0, 0, 0, 0.08) !important;
+    }
+    #view-landing .bg-slate-900\/60,
+    #view-landing .bg-slate-800\/50 {
+      background: rgba(255, 255, 255, 0.5);
+    }
+    #view-landing button.bg-white\/10 {
+      background: rgba(0, 0, 0, 0.05);
+      color: #0f172a;
+    }
+    #view-landing .mesh-1 {
+      background: radial-gradient(600px circle at 10% 20%, rgba(59,130,246,0.08), transparent 40%), radial-gradient(800px circle at 90% 80%, rgba(168,85,247,0.08), transparent 40%);
+    }
+    #view-landing .gradient-text {
+      -webkit-text-fill-color: transparent;
+    }
+    #view-landing .neon-glow {
+      box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+    }
+    #view-landing .glass.rounded-3xl.p-6 {
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.05);
+    }
+    #view-landing footer {
+      color: #64748b;
+      border-top-color: rgba(0,0,0,0.08);
+    }
+
+    /* Language switcher styles */
+    .lang-btn {
+      transition: all 0.2s ease;
+    }
+    .lang-btn.active {
+      background: #3b82f6 !important;
+      color: white !important;
+      box-shadow: 0 0 8px rgba(59,130,246,0.5);
+    }
+    .lang-btn:not(.active):hover {
+      background: rgba(255,255,255,0.2) !important;
+      color: white !important;
+    }
+    /* For light landing page, ensure active button stands out */
+    #view-landing .lang-btn.active {
+      background: #2563eb !important;
+      color: white !important;
+    }
+    #view-landing .lang-btn:not(.active) {
+      background: rgba(0,0,0,0.08) !important;
+      color: #0f172a !important;
+    }
+    #view-landing .lang-btn:not(.active):hover {
+      background: rgba(0,0,0,0.15) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen mesh-1 selection:bg-violet-500/30">
+  <!-- Background -->
+  <div class="fixed inset-0 -z-10">
+    <div class="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] animate-float"></div>
+    <div class="absolute bottom-[-20%] right-[-10%] w-[700px] h-[700px] bg-fuchsia-600/20 rounded-full blur-[140px] animate-float" style="animation-delay: -3s"></div>
+    <div class="absolute top-[40%] left-[50%] -translate-x-1/2 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[100px]"></div>
+  </div>
+
+  <!-- Prototype Switcher (Landing / Teacher / Student) - moved down to avoid overlap -->
+  <div class="fixed top-20 left-1/2 -translate-x-1/2 z-[200] glass rounded-full px-1.5 py-1.5 flex items-center gap-1 shadow-2xl">
+    <button onclick="showView('landing')" data-nav="landing" class="nav-btn px-4 py-1.5 rounded-full text-xs font-medium transition bg-white/10 text-white">Landing</button>
+    <button onclick="showView('teacher')" data-nav="teacher" class="nav-btn px-4 py-1.5 rounded-full text-xs font-medium transition text-slate-400 hover:text-white">O'qituvchi</button>
+    <button onclick="showView('student')" data-nav="student" class="nav-btn px-4 py-1.5 rounded-full text-xs font-medium transition text-slate-400 hover:text-white">Talaba</button>
+  </div>
+
+  <div id="app" class="relative">
+    
+    <!-- ===== LANDING VIEW ===== -->
+    <section id="view-landing" class="view min-h-screen pb-24">
+      <header class="sticky top-0 z-40 border-b border-white/5 glass">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-[68px] flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center neon-glow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold leading-none" data-i18n="brand_name">AI Excellence</p>
+              <p class="text-[10px] text-slate-400 leading-none mt-0.5" data-i18n="brand_sub">Uzbekistan</p>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center gap-8 text-sm text-slate-300">
+            <a href="#" data-i18n="nav_features" class="hover:text-white transition">Imkoniyatlar</a>
+            <a href="#" data-i18n="nav_partners" class="hover:text-white transition">Hamkorlar</a>
+            <a href="#" data-i18n="nav_resources" class="hover:text-white transition">Resurslar</a>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="openAuth('login')" data-i18n="login_btn" class="px-4 py-2 text-sm font-medium text-slate-200 hover:text-white transition">Kirish</button>
+            <button onclick="openAuth('signup')" data-i18n="signup_btn" class="px-4 py-2 text-sm font-medium rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 transition neon-glow">Boshlash</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-16">
+        <!-- Hero -->
+        <div class="text-center max-w-4xl mx-auto">
+          <div class="inline-flex items-center gap-2 glass rounded-full px-3 py-1 mb-6 text-xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span data-i18n="official_badge" class="text-slate-300">🇺🇿 O'zbekiston Respublikasi rasmiy platformasi</span>
+          </div>
+          <h1 class="text-5xl md:text-7xl font-black tracking-tight leading-[1.05]">
+            <span data-i18n="hero_title1">Sun'iy Intellekt</span>
+            <span class="gradient-text block" data-i18n="hero_title2">kelajagini birga quramiz</span>
+          </h1>
+          <p data-i18n="hero_desc" class="mt-6 text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">O'qituvchilar va talabalar uchun yagona milliy AI platforma. Kontent yuklang, o'rganing, tadqiq qiling — hammasi bir joyda.</p>
+          <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button onclick="openAuth('signup')" data-i18n="start_free" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold hover:scale-[1.02] transition neon-glow text-white">Bepul boshlash</button>
+            <button onclick="showView('teacher')" data-i18n="demo_btn" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl glass font-medium hover:bg-white/10 transition flex items-center justify-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Demo ko'rish
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20" id="statsContainer"></div>
+
+        <!-- Features -->
+        <div class="mt-28">
+          <div class="text-center mb-12">
+            <h2 class="text-3xl md:text-4xl font-bold" data-i18n="features_title">Hamma uchun AI imkoniyatlari</h2>
+            <p data-i18n="features_sub" class="text-slate-400 mt-3">O'qitish, o'rganish va tadqiqot uchun to'liq ekotizim</p>
+          </div>
+          <div class="grid md:grid-cols-3 gap-5" id="featuresContainer"></div>
+        </div>
+      </main>
+    </section>
+
+    <!-- ===== TEACHER DASHBOARD ===== -->
+    <section id="view-teacher" class="view hidden min-h-screen pb-24">
+      <div class="flex">
+        <aside class="hidden lg:flex w-[270px] shrink-0 h-screen sticky top-0 glass-strong border-r border-white/10 flex-col">
+          <div class="h-[68px] flex items-center gap-3 px-6 border-b border-white/5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="white" stroke-width="2"/></svg>
+            </div>
+            <span class="font-semibold">AI Center</span>
+          </div>
+          <nav class="p-3 space-y-1 flex-1">
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/10 text-white" data-i18n="teacher_dashboard">Boshqaruv paneli</a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5" data-i18n="teacher_content">Mening kontentlarim</a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5" data-i18n="teacher_analytics">Tahlil</a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5" data-i18n="teacher_students">Talabalar</a>
+          </nav>
+          <div class="p-3 border-t border-white/5">
+            <div class="glass rounded-2xl p-3 flex items-center gap-3">
+              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80" class="w-9 h-9 rounded-full object-cover"/>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium truncate">Umarova Dilnoza</p>
+                <p class="text-[11px] text-slate-400" data-i18n="teacher_role">O'qituvchi • TATU</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="flex-1 min-w-0">
+          <div class="sticky top-0 z-30 h-[68px] glass-strong border-b border-white/5 flex items-center justify-between px-4 lg:px-8">
+            <div>
+              <h1 class="text-lg font-semibold" data-i18n="teacher_welcome">Xush kelibsiz, Dilnoza!</h1>
+              <p class="text-xs text-slate-400" data-i18n="teacher_date_info">Bugun 18-aprel, 2026 • 3 ta yangi izoh</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="p-2.5 glass rounded-xl hover:bg-white/10"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></button>
+              <button onclick="showView('landing')" class="px-3 py-2 text-xs glass rounded-xl hover:bg-white/10" data-i18n="logout">Chiqish</button>
+            </div>
+          </div>
+
+          <div class="p-4 lg:p-8 max-w-[1400px]">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8" id="teacherStats"></div>
+
+            <div class="grid lg:grid-cols-5 gap-6">
+              <div class="lg:col-span-2">
+                <div class="glass rounded-3xl p-6 h-full">
+                  <h2 class="text-lg font-semibold mb-5 flex items-center gap-2"><span class="w-1.5 h-5 bg-gradient-to-b from-blue-500 to-violet-500 rounded-full"></span><span data-i18n="upload_title">Yangi kontent yuklash</span></h2>
+                  <form id="uploadForm" class="space-y-4">
+                    <div>
+                      <label class="text-xs text-slate-400 mb-1.5 block" data-i18n="upload_title_label">Sarlavha</label>
+                      <input type="text" data-i18n-placeholder="upload_title_ph" placeholder="Masalan: Transformer arxitekturasi" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/60 border border-white/10 outline-none focus:border-violet-500/50 text-sm"/>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="text-xs text-slate-400 mb-1.5 block" data-i18n="upload_category">Kategoriya</label>
+                        <select class="w-full px-4 py-2.5 rounded-xl bg-slate-900/60 border border-white/10 outline-none text-sm">
+                          <option data-i18n="cat_ai">Sun'iy Intellekt</option>
+                          <option data-i18n="cat_ml">Machine Learning</option>
+                          <option data-i18n="cat_cv">Computer Vision</option>
+                          <option data-i18n="cat_nlp">NLP</option>
+                          <option data-i18n="cat_robotics">Robototexnika</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="text-xs text-slate-400 mb-1.5 block" data-i18n="upload_type">Turi</label>
+                        <select class="w-full px-4 py-2.5 rounded-xl bg-slate-900/60 border border-white/10 outline-none text-sm">
+                          <option data-i18n="type_video">Video dars</option>
+                          <option data-i18n="type_article">Maqola</option>
+                          <option data-i18n="type_practice">Amaliyot</option>
+                          <option data-i18n="type_dataset">Dataset</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-400 mb-1.5 block" data-i18n="upload_desc">Tavsif</label>
+                      <textarea rows="3" data-i18n-placeholder="upload_desc_ph" placeholder="Qisqacha mazmuni..." class="w-full px-4 py-2.5 rounded-xl bg-slate-900/60 border border-white/10 outline-none text-sm resize-none"></textarea>
+                    </div>
+                    <div id="dropzone" class="group relative border-2 border-dashed border-white/15 rounded-2xl p-6 text-center hover:border-violet-500/50 transition cursor-pointer bg-slate-900/30">
+                      <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" multiple>
+                      <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-600/20 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-violet-300"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                      </div>
+                      <p class="text-sm font-medium" data-i18n="dropzone_text">Faylni tortib tashlang yoki <span class="text-violet-400">tanlang</span></p>
+                      <p class="text-[11px] text-slate-500 mt-1" data-i18n="dropzone_limit">MP4, PDF, ZIP — 2GB gacha</p>
+                    </div>
+                    <div class="flex items-center justify-between pt-2">
+                      <label class="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked class="w-3.5 h-3.5 rounded bg-slate-800 border-white/20 text-violet-600 focus:ring-0">
+                        <span data-i18n="ai_desc_check">AI bilan tavsif yaratish</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked class="w-3.5 h-3.5 rounded bg-slate-800 border-white/20 text-violet-600 focus:ring-0">
+                        <span data-i18n="auto_sub_check">Avto-subtitr</span>
+                      </label>
+                    </div>
+                    <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-medium hover:opacity-90 transition" data-i18n="publish_btn">Nashr qilish</button>
+                  </form>
+                </div>
+              </div>
+
+              <div class="lg:col-span-3">
+                <div class="glass rounded-3xl p-6">
+                  <div class="flex items-center justify-between mb-5">
+                    <h2 class="text-lg font-semibold flex items-center gap-2"><span class="w-1.5 h-5 bg-gradient-to-b from-violet-500 to-fuchsia-500 rounded-full"></span><span data-i18n="my_content_title">Kontentlarim</span></h2>
+                    <div class="flex items-center gap-2">
+                      <input data-i18n-placeholder="search_placeholder" placeholder="Qidirish..." class="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-white/10 text-xs w-32 md:w-auto outline-none"/>
+                      <button class="p-1.5 glass rounded-lg"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+                    </div>
+                  </div>
+                  <div class="overflow-x-auto scrollbar-thin">
+                    <table class="w-full text-sm" id="contentTable">
+                      <thead class="text-[11px] text-slate-400 uppercase tracking-wider border-b border-white/5">
+                        <tr><th class="text-left pb-3 font-medium" data-i18n="table_name">Nomi</th><th class="text-left pb-3 font-medium hidden sm:table-cell" data-i18n="table_type">Turi</th><th class="text-left pb-3 font-medium hidden md:table-cell" data-i18n="table_date">Sana</th><th class="text-left pb-3 font-medium" data-i18n="table_views">Ko'rish</th><th class="text-left pb-3 font-medium" data-i18n="table_status">Holat</th></tr>
+                      </thead>
+                      <tbody id="contentTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STUDENT DASHBOARD ===== -->
+    <section id="view-student" class="view hidden min-h-screen pb-24">
+      <div class="flex">
+        <aside class="hidden lg:flex w-[260px] shrink-0 h-screen sticky top-0 glass-strong border-r border-white/10 flex-col">
+          <div class="h-[68px] flex items-center gap-3 px-6 border-b border-white/5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="white" stroke-width="2"/></svg>
+            </div>
+            <span class="font-semibold">AI Center</span>
+          </div>
+          <nav class="p-3 space-y-1">
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/10" data-i18n="student_courses">Kurslarim</a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-white/5" data-i18n="student_library">AI Kutubxona</a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-white/5" data-i18n="student_favorites">Sevimlilar</a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-white/5" data-i18n="student_achievements">Yutuqlarim</a>
+          </nav>
+        </aside>
+
+        <div class="flex-1 min-w-0">
+          <div class="sticky top-0 z-30 h-[68px] glass-strong border-b border-white/5 flex items-center gap-4 px-4 lg:px-8">
+            <div class="flex-1 max-w-xl relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input data-i18n-placeholder="student_search" placeholder="Kurs, mavzu yoki o'qituvchi qidirish..." class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/60 border border-white/10 text-sm outline-none focus:border-violet-500/50"/>
+            </div>
+            <button onclick="showView('landing')" class="px-3 py-2 text-xs glass rounded-xl hover:bg-white/10" data-i18n="logout">Chiqish</button>
+          </div>
+
+          <div class="p-4 lg:p-8 max-w-[1400px]">
+            <div class="glass rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden gradient-border">
+              <div class="absolute -right-20 -top-20 w-64 h-64 bg-gradient-to-br from-blue-600/30 to-violet-600/30 rounded-full blur-3xl"></div>
+              <div class="relative">
+                <p class="text-sm text-violet-300 font-medium mb-1" data-i18n="student_greeting">Assalomu alaykum, Jasur 👋</p>
+                <h2 class="text-2xl md:text-3xl font-bold mb-2" data-i18n="student_today">Bugun nimani o'rganamiz?</h2>
+                <p class="text-slate-300 text-sm max-w-xl" data-i18n="student_ai_recommend">Siz uchun AI tanlagan 3 ta yangi dars. Davom etish uchun bosing.</p>
+                <div class="flex flex-wrap gap-2 mt-5">
+                  <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs">Prompt Engineering</span>
+                  <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs">Computer Vision</span>
+                  <span class="px-3 py-1.5 rounded-full bg-white/10 text-xs">O'zbek NLP</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-thin" id="studentFilters"></div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" id="studentCoursesGrid"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== GLOBAL LANGUAGE SWITCHER (bottom center) ===== -->
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] flex gap-2 bg-gray-800/90 backdrop-blur-md rounded-full px-3 py-2 shadow-xl border border-white/20">
+    <button data-lang="uz" class="lang-btn px-4 py-1.5 rounded-full text-sm font-medium transition bg-gray-700 text-white hover:bg-gray-600">O‘zb</button>
+    <button data-lang="ru" class="lang-btn px-4 py-1.5 rounded-full text-sm font-medium transition bg-gray-700 text-white hover:bg-gray-600">Рус</button>
+    <button data-lang="en" class="lang-btn px-4 py-1.5 rounded-full text-sm font-medium transition bg-gray-700 text-white hover:bg-gray-600">Eng</button>
+  </div>
+
+  <!-- ===== AUTH MODAL ===== -->
+  <div id="authModal" class="fixed inset-0 z-[400] hidden">
+    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" onclick="closeAuth()"></div>
+    <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-[420px] glass-strong rounded-[2rem] p-8 shadow-2xl gradient-border">
+        <button onclick="closeAuth()" class="absolute top-4 right-4 p-2 rounded-xl hover:bg-white/10 transition">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center mb-4 neon-glow">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="white" stroke-width="2"/></svg>
+          </div>
+          <h2 class="text-2xl font-bold" data-i18n="auth_welcome">Xush kelibsiz</h2>
+          <p class="text-sm text-slate-400 mt-1" data-i18n="auth_sub">AI Excellence Center'ga kiring</p>
+        </div>
+        <div class="flex p-1 glass rounded-2xl mb-6">
+          <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-2.5 rounded-xl text-sm font-medium bg-white/10" data-i18n="login_tab">Kirish</button>
+          <button id="tab-signup" onclick="switchTab('signup')" class="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-400" data-i18n="signup_tab">Ro'yxatdan o'tish</button>
+        </div>
+        <form id="form-login" class="space-y-4">
+          <div><label class="text-xs text-slate-400 mb-1.5 block" data-i18n="email_label">Elektron pochta</label><input type="email" value="demo@ai.uz" class="w-full px-4 py-3 rounded-xl bg-slate-900/70 border border-white/10 outline-none focus:border-violet-500/50 text-sm"/></div>
+          <div><label class="text-xs text-slate-400 mb-1.5 block" data-i18n="password_label">Parol</label><input type="password" value="demo1234" class="w-full px-4 py-3 rounded-xl bg-slate-900/70 border border-white/10 outline-none focus:border-violet-500/50 text-sm"/></div>
+          <div class="flex items-center justify-between text-xs"><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="w-3.5 h-3.5 rounded bg-slate-800 border-white/20"> <span data-i18n="remember_me">Eslab qolish</span></label><a href="#" class="text-violet-400 hover:underline" data-i18n="forgot_pass">Parolni unutdingizmi?</a></div>
+          <button type="button" onclick="loginAs('teacher')" class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-medium hover:opacity-90 transition" data-i18n="login_btn_modal">Kirish</button>
+          <div class="relative my-6"><div class="absolute inset-0 flex items-center"><div class="w-full h-px bg-white/10"></div></div><div class="relative flex justify-center"><span class="px-3 bg-slate-950 text-[11px] text-slate-500 uppercase tracking-wider" data-i18n="or_demo">yoki demo sifatida</span></div></div>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" onclick="loginAs('teacher')" class="py-2.5 rounded-xl glass hover:bg-white/10 text-sm font-medium flex items-center justify-center gap-2" data-i18n="teacher_demo">O'qituvchi</button>
+            <button type="button" onclick="loginAs('student')" class="py-2.5 rounded-xl glass hover:bg-white/10 text-sm font-medium flex items-center justify-center gap-2" data-i18n="student_demo">Talaba</button>
+          </div>
+        </form>
+        <form id="form-signup" class="space-y-4 hidden">
+          <div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-slate-400 mb-1.5 block" data-i18n="first_name">Ism</label><input type="text" placeholder="Ismingiz" class="w-full px-4 py-3 rounded-xl bg-slate-900/70 border border-white/10 outline-none text-sm"/></div><div><label class="text-xs text-slate-400 mb-1.5 block" data-i18n="last_name">Familiya</label><input type="text" placeholder="Familiyangiz" class="w-full px-4 py-3 rounded-xl bg-slate-900/70 border border-white/10 outline-none text-sm"/></div></div>
+          <div><label class="text-xs text-slate-400 mb-1.5 block" data-i18n="email_label">Email</label><input type="email" placeholder="name@edu.uz" class="w-full px-4 py-3 rounded-xl bg-slate-900/70 border border-white/10 outline-none text-sm"/></div>
+          <div><label class="text-xs text-slate-400 mb-1.5 block" data-i18n="password_label">Parol</label><input type="password" placeholder="Kamida 8 belgi" class="w-full px-4 py-3 rounded-xl bg-slate-900/70 border border-white/10 outline-none text-sm"/></div>
+          <div><label class="text-xs text-slate-400 mb-2 block" data-i18n="choose_role">Rolni tanlang</label><div class="grid grid-cols-2 gap-2"><label class="relative cursor-pointer"><input type="radio" name="role" checked class="peer sr-only"><div class="p-3 rounded-xl border border-white/10 peer-checked:border-violet-500 peer-checked:bg-violet-500/10 text-center text-sm" data-i18n="teacher_role_short">O'qituvchi</div></label><label class="relative cursor-pointer"><input type="radio" name="role" class="peer sr-only"><div class="p-3 rounded-xl border border-white/10 peer-checked:border-violet-500 peer-checked:bg-violet-500/10 text-center text-sm" data-i18n="student_role_short">Talaba</div></label></div></div>
+          <button type="button" onclick="toast('Hisob yaratildi!'); closeAuth(); showView('student')" class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-medium" data-i18n="create_account">Hisob yaratish</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-24 right-6 z-[400] hidden">
+    <div class="glass-strong rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3 min-w-[280px]">
+      <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <p id="toastMsg" class="text-sm font-medium">Muvaffaqiyatli!</p>
+    </div>
+  </div>
+
+  <script>
+    // ======================== MULTILANGUAGE DATA ========================
+    const translations = {
+      uz: {
+        brand_name:"AI Excellence", brand_sub:"O‘zbekiston", nav_features:"Imkoniyatlar", nav_partners:"Hamkorlar", nav_resources:"Resurslar",
+        login_btn:"Kirish", signup_btn:"Boshlash", official_badge:"🇺🇿 O'zbekiston Respublikasi rasmiy platformasi",
+        hero_title1:"Sun'iy Intellekt", hero_title2:"kelajagini birga quramiz", hero_desc:"O'qituvchilar va talabalar uchun yagona milliy AI platforma. Kontent yuklang, o'rganing, tadqiq qiling — hammasi bir joyda.",
+        start_free:"Bepul boshlash", demo_btn:"Demo ko'rish", features_title:"Hamma uchun AI imkoniyatlari", features_sub:"O'qitish, o'rganish va tadqiqot uchun to'liq ekotizim",
+        stats: { users:"Faol foydalanuvchi", contents:"Yuklangan kontent", schools:"Ta'lim muassasasi", rating:"Foydalanuvchi bahosi" },
+        feature_cards: [
+          {title:"O'qituvchilar uchun", desc:"Video, maqola va datasetlarni yuklang. AI avtomatik tavsif, teg va subtitr yaratadi. Talabalar faolligini kuzating.", items:["Drag & drop yuklash","AI kontent tahlili","Statistika paneli"]},
+          {title:"Talabalar uchun", desc:"Shaxsiylashtirilgan tavsiyalar, interaktiv laboratoriyalar va real loyihalar. O'zbek tilida AI yordamchi.", items:["AI tutor 24/7","Amaliy laboratoriya","Sertifikatlar"]},
+          {title:"AI Integratsiyasi", desc:"GPT-4, Claude 3.5, Gemini va mahalliy O'zbek LLM. O'z modelingizni ulash imkoniyati.", items:["Multimodal AI","O'zbek NLP","API access"]}
+        ],
+        teacher_dashboard:"Boshqaruv paneli", teacher_content:"Mening kontentlarim", teacher_analytics:"Tahlil", teacher_students:"Talabalar", teacher_role:"O'qituvchi • TATU", teacher_welcome:"Xush kelibsiz, Dilnoza!", teacher_date_info:"Bugun 18-Aprel, 2026  • 3 ta yangi izoh", logout:"Chiqish",
+        upload_title:"Yangi kontent yuklash", upload_title_label:"Sarlavha", upload_title_ph:"Masalan: Transformer arxitekturasi", upload_category:"Kategoriya", upload_type:"Turi", upload_desc:"Tavsif", upload_desc_ph:"Qisqacha mazmuni...", dropzone_text:"Faylni tortib tashlang yoki ", dropzone_limit:"MP4, PDF, ZIP — 2GB gacha", ai_desc_check:"AI bilan tavsif yaratish", auto_sub_check:"Avto-subtitr", publish_btn:"Nashr qilish", my_content_title:"Kontentlarim", search_placeholder:"Qidirish...",
+        table_name:"Nomi", table_type:"Turi", table_date:"Sana", table_views:"Ko'rish", table_status:"Holat",
+        student_courses:"Kurslarim", student_library:"AI Kutubxona", student_favorites:"Sevimlilar", student_achievements:"Yutuqlarim", student_search:"Kurs, mavzu yoki o'qituvchi qidirish...", student_greeting:"Assalomu alaykum, Jasur 👋", student_today:"Bugun nimani o'rganamiz?", student_ai_recommend:"Siz uchun AI tanlagan 3 ta yangi dars. Davom etish uchun bosing.",
+        auth_welcome:"Xush kelibsiz", auth_sub:"AI Excellence Center'ga kiring", login_tab:"Kirish", signup_tab:"Ro'yxatdan o'tish", email_label:"Elektron pochta", password_label:"Parol", remember_me:"Eslab qolish", forgot_pass:"Parolni unutdingizmi?", login_btn_modal:"Kirish", or_demo:"yoki demo sifatida", teacher_demo:"O'qituvchi", student_demo:"Talaba", first_name:"Ism", last_name:"Familiya", choose_role:"Rolni tanlang", teacher_role_short:"O'qituvchi", student_role_short:"Talaba", create_account:"Hisob yaratish"
+      },
+      ru: {
+        brand_name:"AI Excellence", brand_sub:"Узбекистан", nav_features:"Возможности", nav_partners:"Партнеры", nav_resources:"Ресурсы",
+        login_btn:"Вход", signup_btn:"Начать", official_badge:"🇺🇿 Официальная платформа Республики Узбекистан",
+        hero_title1:"Искусственный Интеллект", hero_title2:"строим будущее вместе", hero_desc:"Единая национальная AI-платформа для учителей и студентов. Загружайте контент, учитесь, исследуйте — всё в одном месте.",
+        start_free:"Начать бесплатно", demo_btn:"Смотреть демо", features_title:"Возможности AI для всех", features_sub:"Полная экосистема для обучения, преподавания и исследований",
+        stats: { users:"Активных пользователей", contents:"Загружено контента", schools:"Учебных заведений", rating:"Оценка пользователей" },
+        feature_cards: [
+          {title:"Для учителей", desc:"Загружайте видео, статьи и датасеты. AI автоматически создаст описание, теги и субтитры. Отслеживайте активность учеников.", items:["Drag & drop загрузка","AI-анализ контента","Панель статистики"]},
+          {title:"Для студентов", desc:"Персональные рекомендации, интерактивные лаборатории и реальные проекты. AI-помощник на узбекском языке.", items:["AI-тьютор 24/7","Практическая лаборатория","Сертификаты"]},
+          {title:"AI Интеграция", desc:"GPT-4, Claude 3.5, Gemini и локальная узбекская LLM. Возможность подключения своей модели.", items:["Мультимодальный AI","Узбекский NLP","API доступ"]}
+        ],
+        teacher_dashboard:"Панель управления", teacher_content:"Мои материалы", teacher_analytics:"Аналитика", teacher_students:"Студенты", teacher_role:"Преподаватель • ТАТУ", teacher_welcome:"Добро пожаловать, Дилноза!", teacher_date_info:"Сегодня 18 - апреля 2026 • 3 новых комментария", logout:"Выйти",
+        upload_title:"Загрузить новый контент", upload_title_label:"Название", upload_title_ph:"Например: Архитектура Transformer", upload_category:"Категория", upload_type:"Тип", upload_desc:"Описание", upload_desc_ph:"Краткое содержание...", dropzone_text:"Перетащите файл или ", dropzone_limit:"MP4, PDF, ZIP — до 2 ГБ", ai_desc_check:"Создать описание с помощью AI", auto_sub_check:"Авто-субтитры", publish_btn:"Опубликовать", my_content_title:"Мои материалы", search_placeholder:"Поиск...",
+        table_name:"Название", table_type:"Тип", table_date:"Дата", table_views:"Просмотры", table_status:"Статус",
+        student_courses:"Мои курсы", student_library:"AI Библиотека", student_favorites:"Избранное", student_achievements:"Достижения", student_search:"Поиск курса, темы или преподавателя...", student_greeting:"Ассаламу алейкум, Жасур 👋", student_today:"Что будем изучать сегодня?", student_ai_recommend:"3 новых урока, выбранных AI. Нажмите для продолжения.",
+        auth_welcome:"Добро пожаловать", auth_sub:"Войдите в AI Excellence Center", login_tab:"Вход", signup_tab:"Регистрация", email_label:"Электронная почта", password_label:"Пароль", remember_me:"Запомнить меня", forgot_pass:"Забыли пароль?", login_btn_modal:"Войти", or_demo:"или демо-доступ", teacher_demo:"Преподаватель", student_demo:"Студент", first_name:"Имя", last_name:"Фамилия", choose_role:"Выберите роль", teacher_role_short:"Преподаватель", student_role_short:"Студент", create_account:"Создать аккаунт"
+      },
+      en: {
+        brand_name:"AI Excellence", brand_sub:"Uzbekistan", nav_features:"Features", nav_partners:"Partners", nav_resources:"Resources",
+        login_btn:"Login", signup_btn:"Get Started", official_badge:"🇺🇿 Official platform of the Republic of Uzbekistan",
+        hero_title1:"Artificial Intelligence", hero_title2:"building the future together", hero_desc:"The only national AI platform for teachers and students. Upload content, learn, research — all in one place.",
+        start_free:"Start free", demo_btn:"Watch demo", features_title:"AI opportunities for everyone", features_sub:"Complete ecosystem for teaching, learning and research",
+        stats: { users:"Active users", contents:"Uploaded content", schools:"Educational institutions", rating:"User rating" },
+        feature_cards: [
+          {title:"For Teachers", desc:"Upload videos, articles and datasets. AI automatically generates description, tags and subtitles. Track student activity.", items:["Drag & drop upload","AI content analysis","Statistics dashboard"]},
+          {title:"For Students", desc:"Personalized recommendations, interactive labs and real projects. AI assistant in Uzbek language.", items:["AI tutor 24/7","Practical lab","Certificates"]},
+          {title:"AI Integration", desc:"GPT-4, Claude 3.5, Gemini and local Uzbek LLM. Connect your own model.", items:["Multimodal AI","Uzbek NLP","API access"]}
+        ],
+        teacher_dashboard:"Dashboard", teacher_content:"My Content", teacher_analytics:"Analytics", teacher_students:"Students", teacher_role:"Teacher • TATU", teacher_welcome:"Welcome, Dilnoza!", teacher_date_info:"Today, aprel 18, 2026 • 3 new comments", logout:"Logout",
+        upload_title:"Upload new content", upload_title_label:"Title", upload_title_ph:"Example: Transformer architecture", upload_category:"Category", upload_type:"Type", upload_desc:"Description", upload_desc_ph:"Brief summary...", dropzone_text:"Drag and drop file or ", dropzone_limit:"MP4, PDF, ZIP — up to 2GB", ai_desc_check:"Create description with AI", auto_sub_check:"Auto-subtitles", publish_btn:"Publish", my_content_title:"My Content", search_placeholder:"Search...",
+        table_name:"Name", table_type:"Type", table_date:"Date", table_views:"Views", table_status:"Status",
+        student_courses:"My Courses", student_library:"AI Library", student_favorites:"Favorites", student_achievements:"Achievements", student_search:"Search course, topic or teacher...", student_greeting:"Hello, Jasur 👋", student_today:"What will we learn today?", student_ai_recommend:"3 new lessons chosen by AI. Click to continue.",
+        auth_welcome:"Welcome", auth_sub:"Login to AI Excellence Center", login_tab:"Login", signup_tab:"Sign up", email_label:"Email", password_label:"Password", remember_me:"Remember me", forgot_pass:"Forgot password?", login_btn_modal:"Login", or_demo:"or demo access", teacher_demo:"Teacher", student_demo:"Student", first_name:"First name", last_name:"Last name", choose_role:"Choose role", teacher_role_short:"Teacher", student_role_short:"Student", create_account:"Create account"
+      }
+    };
+
+    let currentLang = localStorage.getItem('appLang') || 'uz';
+    const teacherContentData = [
+      { name_uz:"Sun'iy neyron tarmoqlar asoslari", name_ru:"Основы искусственных нейронных сетей", name_en:"Basics of Artificial Neural Networks", type_uz:"Video", type_ru:"Видео", type_en:"Video", date:"24.11.2024", views:"1,245", status_uz:"Faol", status_ru:"Активен", status_en:"Active" },
+      { name_uz:"Python'da Machine Learning", name_ru:"Машинное обучение на Python", name_en:"Machine Learning in Python", type_uz:"Maqola", type_ru:"Статья", type_en:"Article", date:"18.11.2026", views:"892", status_uz:"Faol", status_ru:"Активен", status_en:"Active" },
+      { name_uz:"Kompyuterli ko'rish: OpenCV", name_ru:"Компьютерное зрение: OpenCV", name_en:"Computer Vision: OpenCV", type_uz:"Amaliyot", type_ru:"Практика", type_en:"Practice", date:"10.11.2026", views:"567", status_uz:"Tekshiruvda", status_ru:"На проверке", status_en:"Under review" },
+      { name_uz:"NLP uchun Transformer", name_ru:"Transformer для NLP", name_en:"Transformer for NLP", type_uz:"Video", type_ru:"Видео", type_en:"Video", date:"02.11.2026", views:"2,103", status_uz:"Faol", status_ru:"Активен", status_en:"Active" },
+      { name_uz:"O'zbek tili LLM fine-tuning", name_ru:"Тонкая настройка LLM для узбекского языка", name_en:"Uzbek language LLM fine-tuning", type_uz:"Dataset", type_ru:"Датасет", type_en:"Dataset", date:"28.10.2026", views:"1,876", status_uz:"Faol", status_ru:"Активен", status_en:"Active" }
+    ];
+    const studentCourses = [
+      { img:"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600", title_uz:"ChatGPT va Prompt Engineering asoslari", title_ru:"ChatGPT и основы Prompt Engineering", title_en:"ChatGPT and Prompt Engineering basics", teacher:"Prof. Karimov A. • TATU", duration_uz:"2soat 15daq", duration_ru:"2ч 15мин", duration_en:"2h 15m", progress:65, type_uz:"Video", type_ru:"Видео", type_en:"Video", level_uz:"O'rta", level_ru:"Средний", level_en:"Intermediate", status_uz:"Davom etish", status_ru:"Продолжить", status_en:"Continue" },
+      { img:"https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600", title_uz:"O'zbek tili uchun Transformer modelini o'rgatish", title_ru:"Обучение модели Transformer для узбекского языка", title_en:"Training Transformer model for Uzbek language", teacher:"Dr. Umarova D. • INHA", duration_uz:"1soat 40daq", duration_ru:"1ч 40мин", duration_en:"1h 40m", progress:30, type_uz:"Amaliyot", type_ru:"Практика", type_en:"Practice", level_uz:"O'rta", level_ru:"Средний", level_en:"Intermediate", status_uz:"Yangi", status_ru:"Новый", status_en:"New" },
+      { img:"https://images.unsplash.com/photo-1547954575-855750a0b4be?w=600", title_uz:"Midjourney va Stable Diffusion'da rasm yaratish", title_ru:"Создание изображений в Midjourney и Stable Diffusion", title_en:"Image generation in Midjourney and Stable Diffusion", teacher:"To'xtayeva S. • PDP", duration_uz:"45 daq", duration_ru:"45 мин", duration_en:"45 min", progress:0, type_uz:"Video", type_ru:"Видео", type_en:"Video", level_uz:"Boshlang'ich", level_ru:"Начальный", level_en:"Beginner", status_uz:"Boshlash", status_ru:"Начать", status_en:"Start" },
+      { img:"https://images.unsplash.com/photo-1555255707-c07966088b7b?w=600", title_uz:"Kompyuterli ko'rish: YOLOv8 obyektni aniqlash", title_ru:"Компьютерное зрение: обнаружение объектов YOLOv8", title_en:"Computer Vision: YOLOv8 object detection", teacher:"Dr. Umarova D. • INHA", duration_uz:"2soat", duration_ru:"2ч", duration_en:"2h", progress:100, type_uz:"Tugallangan", type_ru:"Завершен", type_en:"Completed", level_uz:"O'rta", level_ru:"Средний", level_en:"Intermediate", status_uz:"Sertifikat olingan", status_ru:"Сертификат получен", status_en:"Certificate earned" },
+      { img:"https://images.unsplash.com/photo-1518770660439-4636190af475?w=600", title_uz:"NLP asoslari va O'zbek korpus yaratish", title_ru:"Основы NLP и создание узбекского корпуса", title_en:"NLP basics and creating Uzbek corpus", teacher:"Aliyev B. • TUIT", duration_uz:"12 daq o'qish", duration_ru:"12 мин чтения", duration_en:"12 min read", progress:0, type_uz:"Maqola", type_ru:"Статья", type_en:"Article", level_uz:"Boshlang'ich", level_ru:"Начальный", level_en:"Beginner", status_uz:"Saqlangan", status_ru:"Сохранено", status_en:"Saved" },
+      { img:"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600", title_uz:"AI etikasi, xavfsizlik va mas'uliyat", title_ru:"Этика ИИ, безопасность и ответственность", title_en:"AI ethics, safety and responsibility", teacher:"Prof. Karimov A. • TATU", duration_uz:"1soat 20daq", duration_ru:"1ч 20мин", duration_en:"1h 20m", progress:10, type_uz:"Video", type_ru:"Видео", type_en:"Video", level_uz:"Majburiy", level_ru:"Обязательный", level_en:"Required", status_uz:"Davom etish", status_ru:"Продолжить", status_en:"Continue" }
+    ];
+
+    function t(key, fallback='') { return translations[currentLang]?.[key] || fallback || key; }
+
+    function updateLanguage() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && translations[currentLang][key]) el.innerText = translations[currentLang][key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key && translations[currentLang][key]) el.placeholder = translations[currentLang][key];
+      });
+      renderLandingStats();
+      renderFeatures();
+      renderTeacherTable();
+      renderStudentCourses();
+      renderTeacherStats();
+      document.querySelectorAll('#authModal [data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && translations[currentLang][key]) el.innerText = translations[currentLang][key];
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        if(btn.getAttribute('data-lang') === currentLang) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+    }
+
+    function renderLandingStats() {
+      const container = document.getElementById('statsContainer');
+      if(!container) return;
+      const statsData = [
+        { count:"12,847+", label: t('Статистика пользователей') },
+        { count:"1,284", label: t('Статистика контента') },
+        { count:"89", label: t('Статистика школ') },
+        { count:"4.9/5", label: t('Рейтинг') }
+      ];
+      container.innerHTML = statsData.map(s => `<div class="glass rounded-3xl p-6 text-center ${s.count.includes('4.9')?'gradient-border':''}"><p class="text-3xl font-bold ${s.count.includes('4.9')?'gradient-text':''}">${s.count}</p><p class="text-sm text-slate-400 mt-1">${s.label}</p></div>`).join('');
+    }
+    function renderFeatures() {
+      const container = document.getElementById('featuresContainer');
+      if(!container) return;
+      const cards = translations[currentLang].feature_cards;
+      container.innerHTML = cards.map(card => `
+        <div class="glass rounded-3xl p-8 hover:bg-white/[0.08] transition group">
+          <div class="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center mb-5 group-hover:scale-110 transition"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M4 19.5A2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 0 0 1 4 19.5v-15A2.5 0 0 1 6.5 2z"/></svg></div>
+          <h3 class="text-xl font-semibold mb-2">${card.title}</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">${card.desc}</p>
+          <ul class="mt-4 space-y-2 text-xs text-slate-300">${card.items.map(i => `<li class="flex items-center gap-2"><span class="w-1 h-1 bg-blue-400 rounded-full"></span>${i}</li>`).join('')}</ul>
+        </div>
+      `).join('');
+    }
+    function renderTeacherTable() {
+      const tbody = document.getElementById('contentTableBody');
+      if(!tbody) return;
+      tbody.innerHTML = teacherContentData.map(row => `
+        <tr class="hover:bg-white/[0.02]">
+          <td class="py-3.5 pr-4"><div><p class="font-medium">${row[`name_${currentLang}`]}</p><p class="text-[11px] text-slate-500 sm:hidden">${row[`type_${currentLang}`]} • ${row.date}</p></div></td>
+          <td class="py-3.5 hidden sm:table-cell"><span class="px-2 py-1 rounded-lg bg-blue-500/15 text-blue-300 text-[11px]">${row[`type_${currentLang}`]}</span></td>
+          <td class="py-3.5 text-slate-400 hidden md:table-cell">${row.date}</td>
+          <td class="py-3.5">${row.views}</td>
+          <td class="py-3.5"><span class="px-2 py-1 rounded-lg ${row.status_uz === 'Faol'?'bg-emerald-500/15 text-emerald-300':'bg-amber-500/15 text-amber-300'} text-[11px]">${row[`status_${currentLang}`]}</span></td>
+        </tr>
+      `).join('');
+    }
+    function renderStudentCourses() {
+      const container = document.getElementById('studentCoursesGrid');
+      if(!container) return;
+      container.innerHTML = studentCourses.map(c => `
+        <div class="group glass rounded-3xl overflow-hidden hover:bg-white/[0.08] transition cursor-pointer" onclick="toast('${t('student_courses')}')">
+          <div class="relative aspect-video overflow-hidden"><img src="${c.img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500"/><div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent"></div><span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-blue-600/90 text-[11px] font-medium backdrop-blur">${c[`type_${currentLang}`]}</span><span class="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-black/70 text-[11px] backdrop-blur">${c[`duration_${currentLang}`]}</span><div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10"><div class="h-full w-[${c.progress}%] bg-gradient-to-r from-blue-500 to-violet-500"></div></div></div>
+          <div class="p-5"><h3 class="font-semibold leading-snug group-hover:text-violet-300 transition">${c[`title_${currentLang}`]}</h3><p class="text-xs text-slate-400 mt-1.5">${c.teacher}</p><div class="flex items-center justify-between mt-4"><div class="flex -space-x-1.5"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40" class="w-6 h-6 rounded-full border-2 border-slate-900"/><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40" class="w-6 h-6 rounded-full border-2 border-slate-900"/><span class="w-6 h-6 rounded-full bg-slate-800 border-2 border-slate-900 flex items-center justify-center text-[9px]">+124</span></div><span class="text-[11px] px-2 py-1 rounded-lg ${c.progress===100?'bg-emerald-500/15 text-emerald-300':c.progress>0?'bg-amber-500/15 text-amber-300':'bg-blue-500/15 text-blue-300'}">${c[`status_${currentLang}`]}</span></div></div>
+        </div>
+      `).join('');
+    }
+    function renderTeacherStats() {
+      const container = document.getElementById('teacherStats');
+      if(!container) return;
+      container.innerHTML = `
+        <div class="glass rounded-3xl p-5"><div class="flex items-center justify-between"><p class="text-sm text-slate-400">${t('teacher_content')}</p><div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div></div><p class="text-3xl font-bold mt-3">24</p><p class="text-xs text-emerald-400 mt-1">+3 bu oy</p></div>
+        <div class="glass rounded-3xl p-5"><div class="flex items-center justify-between"><p class="text-sm text-slate-400">${t('table_views')}</p><div class="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div></div><p class="text-3xl font-bold mt-3">18,492</p><p class="text-xs text-emerald-400 mt-1">+12% o'tgan haftaga</p></div>
+        <div class="glass rounded-3xl p-5"><div class="flex items-center justify-between"><p class="text-sm text-slate-400">${t('student_achievements')}</p><div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div></div><p class="text-3xl font-bold mt-3">4.8</p><p class="text-xs text-slate-400 mt-1">324 ta baho</p></div>
+      `;
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('appLang', lang);
+      updateLanguage();
+    }
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang')));
+    });
+
+    const views = ['landing','teacher','student'];
+    function showView(id){
+      views.forEach(v=>{
+        document.getElementById('view-'+v).classList.toggle('hidden', v!==id);
+        document.querySelector(`[data-nav="${v}"]`).classList.toggle('bg-white/10', v===id);
+        document.querySelector(`[data-nav="${v}"]`).classList.toggle('text-white', v===id);
+        document.querySelector(`[data-nav="${v}"]`).classList.toggle('text-slate-400', v!==id);
+      });
+      window.scrollTo(0,0);
+    }
+    function openAuth(tab='login'){
+      document.getElementById('authModal').classList.remove('hidden');
+      switchTab(tab);
+    }
+    function closeAuth(){ document.getElementById('authModal').classList.add('hidden'); }
+    function switchTab(tab){
+      const isLogin = tab==='login';
+      document.getElementById('form-login').classList.toggle('hidden', !isLogin);
+      document.getElementById('form-signup').classList.toggle('hidden', isLogin);
+      document.getElementById('tab-login').classList.toggle('bg-white/10', isLogin);
+      document.getElementById('tab-login').classList.toggle('text-slate-400', !isLogin);
+      document.getElementById('tab-signup').classList.toggle('bg-white/10', !isLogin);
+      document.getElementById('tab-signup').classList.toggle('text-slate-400', isLogin);
+    }
+    function loginAs(role){
+      closeAuth();
+      toast(role==='teacher' ? t('teacher_welcome') : t('student_greeting'));
+      setTimeout(()=> showView(role), 300);
+    }
+    function toast(msg){
+      const el = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(()=> el.classList.add('hidden'), 2500);
+    }
+    document.getElementById('uploadForm')?.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      toast(t('publish_btn'));
+      e.target.reset();
+    });
+    const dz = document.getElementById('dropzone');
+    if(dz){
+      ['dragenter','dragover'].forEach(ev=> dz.addEventListener(ev, ()=> dz.classList.add('border-violet-500/70','bg-violet-500/5')));
+      ['dragleave','drop'].forEach(ev=> dz.addEventListener(ev, ()=> dz.classList.remove('border-violet-500/70','bg-violet-500/5')));
+      dz.addEventListener('drop', e=>{ e.preventDefault(); toast('File accepted: lecture.mp4'); });
+    }
+    setLanguage(currentLang);
+    showView('landing');
+  </script>
+</body>
+</html>
