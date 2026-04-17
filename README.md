@@ -1,4 +1,38 @@
-збекистан AI Excellence Center Platform
+O'zbekiston AI Excellence Center Platformasi
+
+Sun'iy intellekt sohasida ta'lim va tadqiqotlar o'tkazish uchun O'zbekiston o'qituvchilari hamda talabalarini birlashtiruvchi zamonaviy ta'lim ekotizimi prototipi.
+
+Asosiy imkoniyatlar
+
+Loyiha SPA (Single Page Application) sifatida amalga oshirilgan bo'lib, bu sahifani qayta yuklamasdan rollar o'rtasida bir zumda almashishni ta'minlaydi.
+
+Landing Page (Asosiy sahifa)
+— Yorug' mavzu: Zamonaviy ko'rinish uchun Glassmorphism va yumshoq gradientlardan foydalanilgan.
+— Statistika: Platformaning asosiy ko'rsatkichlari aks etgan interaktiv bloklar.
+— Moslashuvchanlik: Tailwind CSS yordamida mobil qurilmalarni to'liq qo'llab-quvvatlash.
+
+O'qituvchi paneli (Dashboard)
+— Kontent yuklash: Video, maqola va ma'lumotlar to'plami (datasets) uchun Drag-and-Drop funksiyasi.
+— AI integratsiyasi: Tavsiflar va subtitrlarni avtomatik yaratish funksiyalari.
+— Analitika: Ko'rilishlar monitoringi va materiallar holatini boshqarish.
+
+Talaba paneli (Dashboard)
+— Kurslar kutubxonasi: Shaxsiylashtirilgan o'quv kartochkalari (Prompt Engineering, NLP, Computer Vision).
+— Progressni kuzatish: Darslarni yakunlash va sertifikatlar olishning vizual ko'rsatkichlari.
+— Qidiruv: Toifalar va murakkablik darajasi bo'yicha intellektual filtr.
+
+Texnologik stek
+
+— Frontend: HTML5, Vanilla JavaScript.
+— Styling: Tailwind CSS (gradientlarning maxsus konfiguratsiyalari bilan).
+— UI/UX: Glassmorphism Design, Inter shriftlari, SVG ikonkalari.
+— SDK: Ilovaning hayotiy siklini kuzatish uchun Playables SDK integratsiya qilingan.
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Узбекистан AI Excellence Center Platform
 
 Современный прототип образовательной экосистемы, объединяющий преподавателей и студентов Узбекистана для обучения и исследований в области искусственного интеллекта.
 
